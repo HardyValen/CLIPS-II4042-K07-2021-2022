@@ -8,7 +8,27 @@
   (slot nik)
 )
 
-(deffacts blacklistDB
+(deftemplate orang
+  (slot kk)
+  (slot nik)
+  (slot umur)
+  (slot salary)
+  (slot risk)
+  (slot isLeasing)
+)
+
+(deffacts orangDB
+  (orang
+    (kk 3275061402000022) 
+    (nik 3275061402000022)
+    (umur 35)
+    (salary 10000000)
+    (risk low)
+    (isLeasing false)
+  )
+)
+
+(deffacts BlacklistDB
   (blacklist (kk 3326162103070009) (nik 3326160101810021))
   (blacklist (kk 3326160108060009) (nik 3326164107570382))
   (blacklist (kk 3326160111080002) (nik 3326164511690002))
@@ -104,6 +124,13 @@
   (blacklist (kk 3326160112050067) (nik 3326161808790021))
 )
 
+(deffacts KonfigurasiSimulasi
+  (polis 20000)                   ; Polis
+  (admin 3000000)                 ; Admin
+  (v_provisi 2.0)                 ; Provisi (persentase)
+  (acp 1)                         ; 1 = TRUE, otherwise = FALSE
+)
+
 (deffunction calc_acp (?a ?b)            ; Hitung ACP dari tenor, default = 0
   (if (= ?b 1)
     then
@@ -127,16 +154,7 @@
 ; initializes the program
 ; ======================================
 
-(defrule start 
-=> 
-  (assert (phase start))
-  
-  ; Konstanta
-  (assert (polis 20000))                   ; Polis
-  (assert (admin 3000000))                 ; Admin
-  (assert (v_provisi 2.0))                 ; Provisi (persentase)
-  (assert (acp 1))                         ; 1 = TRUE, otherwise = FALSE
-)
+(defrule start => (assert (phase start)))
 
 ; ======================================
 ; defrule start-action
@@ -361,7 +379,7 @@
 )
 
 ; ======================================
-; defrule BLMS-action-correct-choice-n
+; defrule simulasi-action-correct-choice-n
 ; correct value = [1, 2, 3, 4] 
 ; ======================================
 
@@ -445,6 +463,7 @@
   (acp ?s_acp)
 =>
   (retract ?phase ?f_otr ?f_dp ?f_bunga ?f_tenor ?f_asuransi)
+
   ; Process
   (bind ?dp (* ?v_otr (/ ?v_dp 100)))                       ; DP dalam desimal
   (bind ?ph (- ?v_otr ?dp))                                 ; PH = OTR - DP
@@ -523,6 +542,166 @@
   (printout t "Masukkan rate provisi (rate) | Before: " ?v_provisi " | float> ") (assert (v_provisi (read)))
   (printout t "Aktifkan ACP? | Before: " ?s_acp " | [1 = YA, lainnya = TIDAK]> ") (assert (acp (read)))
   (assert (phase simulasi-2))
+)
+
+; ======================================
+; 03 - SURVEI KELAYAKAN PELANGGAN
+; ======================================
+
+(defrule survei
+  ?phase <- (phase survei)
+=>
+  (
+    printout t "Survei Kelayakan Pelanggan" crlf
+    "1. Tambah Data Pelanggan" crlf
+    "2. Ubah Data Pelanggan" crlf
+    "3. Hapus Data Pelanggan" crlf
+    "4. Cari Pelanggan" crlf
+    "5. Daftar Semua Pelanggan" crlf
+    "6. Survei (Single)" crlf
+    "7. Survei (Batch)" crlf
+    "8. Kembali ke Menu Utama" crlf
+    "9. Keluar dari program" crlf
+
+    "Apa yang ingin anda lakukan (1 - 9)?" crlf
+  )
+  (retract ?phase)
+  (assert (phase survei-action-process))
+  (printout t "Survei> ")
+  (assert (user-select (read)))
+)
+
+; ======================================
+; defrule survei-action-correct-choice-n
+; correct value = [1-9] 
+; ======================================
+
+(defrule survei-action-correct-choice-1
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&1)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-1))
+)
+
+(defrule survei-action-correct-choice-2
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&2)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-2))
+)
+
+(defrule survei-action-correct-choice-3
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&3)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-3))
+)
+
+(defrule survei-action-correct-choice-4
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&4)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-4))
+)
+
+(defrule survei-action-correct-choice-5
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&5)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-5))
+)
+
+(defrule survei-action-correct-choice-6
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&6)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-6))
+)
+
+(defrule survei-action-correct-choice-7
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&7)
+=>
+  (retract ?phase ?choice)
+  (assert (phase survei-7))
+)
+
+(defrule survei-action-correct-choice-8
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&8)
+=>
+  (retract ?phase ?choice)
+  (assert (phase start))
+)
+
+(defrule survei-action-correct-choice-9
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&9)
+=>
+  (retract ?phase ?choice)
+  (assert (phase quit))
+)
+
+(defrule survei-action-incorrect-choice
+  ?phase <- (phase survei-action-process)
+  ?choice <- (user-select ?select&~1&~2&~3&~4&~5)
+=>
+  (retract ?phase ?choice)
+  (printout t "Survei> " ?select " tidak ada di pilihan, masukkan nomor 1 - 9." crlf)
+  (assert (phase survei))
+)
+
+; ============================================
+; survei-1 : Tambah Data Pelanggan
+; ============================================
+
+(defrule Rule-survei-1
+  ?phase <- (phase survei-1)
+=>
+  (retract ?phase)
+  (printout t "Masukkan Nomor KK: ") (bind ?kk (read))
+  (printout t "Masukkan Nomor NIK: ") (bind ?nik (read))
+  (printout t "Masukkan umur: ") (bind ?umur (read))
+  (printout t "Masukkan gaji bulanan: ") (bind ?salary (read))
+  (printout t "Tentukan risk profile (low | medium | high): ") (bind ?risk (read))
+  (printout t "Apakah sedang mengangsur? (true | false): ") (bind ?isLeasing (read))
+  (assert (orang
+    (kk ?kk)
+    (nik ?nik)
+    (umur ?umur)
+    (salary ?salary)
+    (risk ?risk)
+    (isLeasing ?isLeasing)
+  ))
+  (assert (phase survei))
+)
+
+; ============================================
+; survei-2 : Ubah Data Pelanggan
+; ============================================
+
+(defrule Rule-survei-2
+  ?phase <- (phase survei-2)
+=>
+  (retract ?phase)
+  (assert (phase survei))
+)
+
+; ============================================
+; survei-2 : Ubah Data Pelanggan
+; ============================================
+
+(defrule Rule-survei-2
+  ?phase <- (phase survei-2)
+=>
+  (retract ?phase)
+  (assert (phase survei))
 )
 
 ; ======================================
