@@ -104,12 +104,39 @@
   (blacklist (kk 3326160112050067) (nik 3326161808790021))
 )
 
+(deffunction calc_acp (?a ?b)            ; Hitung ACP dari tenor, default = 0
+  (if (= ?b 1)
+    then
+      (switch ?a                         ; Asumsi tenor >4 tahun tidak include ACP
+        (case 1 then 0.5)                ; ACP: Astra Credit Protection
+        (case 2 then 0.75)
+        (case 3 then 1.25)
+        (case 4 then 1.5)
+        (default 0)
+      )
+    else 0 
+  )
+)
+
+(deffunction round100 (?a)
+  (* (round (/ ?a 100)) 100)
+)
+
 ; ======================================
 ; defrule start
 ; initializes the program
 ; ======================================
 
-(defrule start => (assert (phase start)))
+(defrule start 
+=> 
+  (assert (phase start))
+  
+  ; Konstanta
+  (assert (polis 20000))                   ; Polis
+  (assert (admin 3000000))                 ; Admin
+  (assert (v_provisi 2.0))                 ; Provisi (persentase)
+  (assert (acp 1))                         ; 1 = TRUE, otherwise = FALSE
+)
 
 ; ======================================
 ; defrule start-action
@@ -121,7 +148,7 @@
 =>
   (
     printout t "Simulasi Angsuran Kredit 'Dragon Cycle'" crlf
-    "1. Blacklist Management System" crlf
+    "1. Blacklist Inspector" crlf
     "2. Simulasi Angsuran Kredit" crlf
     "3. Survei Kelayakan Pelanggan" crlf
     "4. Keluar dari program" crlf
@@ -192,21 +219,19 @@
 )
 
 ; ======================================
-; 01 - BLACKLIST MANAGEMENT SYSTEM
+; 01 - BLACKLIST INSPECTOR
 ; ======================================
 
 (defrule BLMS
   ?phase <- (phase BLMS)
 =>
   (
-    printout t "Blacklist Management System Interface" crlf
+    printout t "Blacklist Inspector" crlf
     "1. Cek Blacklist (KK dan NIK)" crlf
     "2. Daftar Orang Blacklist" crlf
-    "3. Tambah Orang Blacklist" crlf
-    "4. Hapus Orang Blacklist" crlf
-    "5. Kembali ke Menu Utama" crlf
-    "6. Keluar dari program" crlf
-    "Apa yang ingin anda lakukan (1 - 6)?" crlf
+    "3. Kembali ke Menu Utama" crlf
+    "4. Keluar dari program" crlf
+    "Apa yang ingin anda lakukan (1 - 4)?" crlf
   )
   (retract ?phase)
   (assert (phase BLMS-action-process))
@@ -216,7 +241,7 @@
 
 ; ======================================
 ; defrule BLMS-action-correct-choice-n
-; correct value = [1, 2, 3, 4, 5, 6] 
+; correct value = [1, 2, 3, 4] 
 ; ======================================
 
 (defrule BLMS-action-correct-choice-1
@@ -240,7 +265,7 @@
   ?choice <- (user-select ?select&3)
 =>
   (retract ?phase ?choice)
-  (assert (phase BLMS-3))
+  (assert (phase start))
 )
 
 (defrule BLMS-action-correct-choice-4
@@ -248,31 +273,15 @@
   ?choice <- (user-select ?select&4)
 =>
   (retract ?phase ?choice)
-  (assert (phase BLMS-4))
-)
-
-(defrule BLMS-action-correct-choice-5
-  ?phase <- (phase BLMS-action-process)
-  ?choice <- (user-select ?select&5)
-=>
-  (retract ?phase ?choice)
-  (assert (phase start))
-)
-
-(defrule BLMS-action-correct-choice-6
-  ?phase <- (phase BLMS-action-process)
-  ?choice <- (user-select ?select&6)
-=>
-  (retract ?phase ?choice)
   (assert (phase quit))
 )
 
-(defrule start-action-incorrect-choice
+(defrule BLMS-action-incorrect-choice
   ?phase <- (phase BLMS-action-process)
-  ?choice <- (user-select ?select&~1&~2&~3&~4&~5&~6)
+  ?choice <- (user-select ?select&~1&~2&~3&~4)
 =>
   (retract ?phase ?choice)
-  (printout t "BLMS> " ?select " tidak ada di pilihan, masukkan nomor 1 - 6." crlf)
+  (printout t "BLMS> " ?select " tidak ada di pilihan, masukkan nomor 1 - 4." crlf)
   (assert (phase BLMS))
 )
 
@@ -311,32 +320,216 @@
 )
 
 ; ======================================
+; BLMS-2 - Daftar Blacklist
+; ======================================
+(defrule Rule-BLMS-2
+  ?phase <- (phase BLMS-2)
+  (blacklist (kk ?kk) (nik ?nik))
+=>
+  (retract ?phase)
+  (bind ?count 1)
+  (do-for-all-facts ((?f blacklist)) TRUE 
+    (format t "%d. KK: %d; NIK: %d;%n" ?count ?f:kk ?f:nik)
+    (bind ?count (+ ?count 1))
+  )
+  (printout t "Banyak Orang dalam Blacklist: " (- ?count 1) crlf)
+  (assert (phase BLMS))
+)
+
+; ======================================
+; 02 - SIMULASI ANGSURAN KREDIT
+; ======================================
+
+(defrule simulasi
+  ?phase <- (phase simulasi)
+=>
+  (
+    printout t "Simulasi Angsuran Kredit" crlf
+    "1. Dapatkan Harga Angsuran" crlf
+    "2. Cek Konfigurasi" crlf
+    "3. Ubah Konfigurasi" crlf
+    "4. Kembali ke Menu Utama" crlf
+    "5. Keluar dari program" crlf
+
+    "Asumsi: Angsuran pertama dibayar bersama DP" crlf
+    "Apa yang ingin anda lakukan (1 - 5)?" crlf
+  )
+  (retract ?phase)
+  (assert (phase simulasi-action-process))
+  (printout t "Simulasi> ")
+  (assert (user-select (read)))
+)
+
+; ======================================
+; defrule BLMS-action-correct-choice-n
+; correct value = [1, 2, 3, 4] 
+; ======================================
+
+(defrule simulasi-action-correct-choice-1
+  ?phase <- (phase simulasi-action-process)
+  ?choice <- (user-select ?select&1)
+=>
+  (retract ?phase ?choice)
+  (assert (phase simulasi-1))
+)
+
+(defrule simulasi-action-correct-choice-2
+  ?phase <- (phase simulasi-action-process)
+  ?choice <- (user-select ?select&2)
+=>
+  (retract ?phase ?choice)
+  (assert (phase simulasi-2))
+)
+
+(defrule simulasi-action-correct-choice-3
+  ?phase <- (phase simulasi-action-process)
+  ?choice <- (user-select ?select&3)
+=>
+  (retract ?phase ?choice)
+  (assert (phase simulasi-3))
+)
+
+(defrule simulasi-action-correct-choice-4
+  ?phase <- (phase simulasi-action-process)
+  ?choice <- (user-select ?select&4)
+=>
+  (retract ?phase ?choice)
+  (assert (phase start))
+)
+
+(defrule simulasi-action-correct-choice-5
+  ?phase <- (phase simulasi-action-process)
+  ?choice <- (user-select ?select&5)
+=>
+  (retract ?phase ?choice)
+  (assert (phase quit))
+)
+
+(defrule simulasi-action-incorrect-choice
+  ?phase <- (phase simulasi-action-process)
+  ?choice <- (user-select ?select&~1&~2&~3&~4&~5)
+=>
+  (retract ?phase ?choice)
+  (printout t "Simulasi> " ?select " tidak ada di pilihan, masukkan nomor 1 - 5." crlf)
+  (assert (phase simulasi))
+)
+
+; ============================================
+; Simulasi-1 : Dapatkan harga angsuran bulanan
+; ============================================
+
+(defrule Rule-simulasi-1
+  ?phase <- (phase simulasi-1)
+=>
+  (retract ?phase)
+  (printout t "Memulai Simulasi Angsuran Kredit Mobil Bekas.. (masukkan data yang sesuai)" crlf)
+  (printout t "Masukkan harga mobil (OTR) | integer> ") (assert (input-OTR (read)))
+  (printout t "Masukkan persentase DP | float> ") (assert (input-DP (read)))
+  (printout t "Masukkan persentase suku bunga (rate) | float> ") (assert (input-bunga (read)))
+  (printout t "Masukkan jangka angsuran (tenor, tahun) | integer> ") (assert (input-tenor (read)))
+  (printout t "Masukkan persentase asuransi dari OTR | float> ") (assert (input-asuransi (read)))
+  (assert (phase simulasi-1-b))
+)
+
+
+(defrule Rule-simulasi-1-b
+  ?phase <- (phase simulasi-1-b)
+  ?f_otr <- (input-OTR ?v_otr)
+  ?f_dp <- (input-DP ?v_dp)
+  ?f_bunga <- (input-bunga ?v_bunga)
+  ?f_tenor <- (input-tenor ?v_tenor)
+  ?f_asuransi <- (input-asuransi ?v_asuransi)
+  (polis ?v_polis)
+  (admin ?v_admin)
+  (v_provisi ?v_provisi)
+  (acp ?s_acp)
+=>
+  (retract ?phase ?f_otr ?f_dp ?f_bunga ?f_tenor ?f_asuransi)
+  ; Process
+  (bind ?dp (* ?v_otr (/ ?v_dp 100)))                       ; DP dalam desimal
+  (bind ?ph (- ?v_otr ?dp))                                 ; PH = OTR - DP
+  (bind ?bunga (* ?ph (* ?v_tenor (/ ?v_bunga 100))))       ; Bunga = PH * Tenor (tahun) * %Bunga
+  (bind ?th (+ ?ph ?bunga))                                 ; TH = PH + Bunga
+  (bind ?angsuran (/ ?th (* ?v_tenor 12)))                  ; Angsuran = TH / (Tenor (tahun) * 12)
+  (bind ?asuransi (* ?v_otr (/ ?v_asuransi 100)))           ; Asuransi = OTR * %Asuransi
+  (bind ?provisi (* ?ph (/ ?v_provisi 100)))                ; Provisi = PH * %provisi
+  (bind ?acp (* ?ph (/ (calc_acp ?v_tenor ?s_acp) 100)) )    ; ACP = PH * %ACP
+  
+  (bind ?totalDP (+ ?dp (+ ?angsuran (+ (round100 ?asuransi) (+ ?v_polis (+ (round100 ?provisi) (+ ?v_admin (round100 ?acp))))))))
+  (bind ?pelunasan_dealer (- ?v_otr ?totalDP))
+
+  ; Output
+  (printout t "=========================================" crlf)
+  (printout t "OUTPUT" crlf)
+  (printout t "=========================================" crlf)
+  (format t "DP: %.2f%n" ?dp)
+  (format t "Pokok Hutang: %.2f%n" ?ph)
+  (format t "Bunga: %.2f%n" ?bunga)
+  (format t "Total Hutang: %.2f%n" ?th)
+  (format t "Angsuran: %.2f, Rounded: %.2f%n" ?angsuran (round100 ?angsuran))
+
+  (printout t crlf "=========================================" crlf)
+  (printout t "PEMBAYARAN PERTAMA" crlf)
+  (printout t "=========================================" crlf)
+  (format t "DP: %.2f%n" ?dp)
+  (format t "Angsuran pertama: %.2f%n" (round100 ?angsuran))
+  (format t "Asuransi: %.2f, Rounded: %.2f%n" ?asuransi (round100 ?asuransi))
+  (format t "Biaya Polis: %.2f%n" ?v_polis)
+  (format t "Biaya Admin: %.2f%n" ?v_admin)
+  (format t "Provisi: %.2f, Rounded: %.2f%n" ?provisi (round100 ?provisi))
+  (format t "ACP: %.2f, Rounded: %.2f%n" ?acp (round100 ?acp))
+  (format t "Total DP: %.2f%n" (round100 ?totalDP))
+  (format t "Pelunasan ke Dealer: %.2f%n" (round100 ?pelunasan_dealer))
+  (printout t "=========================================" crlf crlf)
+
+  ; Cleanup
+  (assert (phase simulasi))
+)
+
+; ============================================
+; Simulasi-2 : Cek Konfigurasi
+; ============================================
+
+(defrule Rule-simulasi-2
+  ?phase <- (phase simulasi-2)
+  (polis ?v_polis)
+  (admin ?v_admin)
+  (v_provisi ?v_provisi)
+  (acp ?s_acp)
+=>
+  (retract ?phase)
+  (printout t "Biaya Polis: " ?v_polis crlf)
+  (printout t "Biaya Admin: " ?v_admin crlf)
+  (printout t "Persentase Provisi: " ?v_provisi "%" crlf)
+  (printout t "Pakai ACP? (1 = YA, lainnya = TIDAK): " ?s_acp crlf)
+  (assert (phase simulasi))
+)
+
+; ============================================
+; Simulasi-3 : Ubah Konfigurasi
+; ============================================
+
+(defrule Rule-simulasi-3
+  ?phase <- (phase simulasi-3)
+  ?f_polis <- (polis ?v_polis)
+  ?f_admin <- (admin ?v_admin)
+  ?f_provisi <- (v_provisi ?v_provisi)
+  ?f_acp <- (acp ?s_acp)
+=>
+  (retract ?phase ?f_polis ?f_admin ?f_provisi ?f_acp)
+  (printout t "Mengubah konfigurasi.. (masukkan data yang sesuai)" crlf)
+  (printout t "Masukkan biaya polis (OTR) | Before: " ?v_polis " | integer> ") (assert (polis (read)))
+  (printout t "Masukkan biaya admin | Before: " ?v_admin " | integer> ") (assert (admin (read)))
+  (printout t "Masukkan rate provisi (rate) | Before: " ?v_provisi " | float> ") (assert (v_provisi (read)))
+  (printout t "Aktifkan ACP? | Before: " ?s_acp " | [1 = YA, lainnya = TIDAK]> ") (assert (acp (read)))
+  (assert (phase simulasi-2))
+)
+
+; ======================================
 ; Autorun CLIPS
 ; ======================================
 (reset)
 (run)
-
-
-; (defrule correct (or (blacklist (kk ?kk)) (blacklist (nik ?nik)))
-; =>
-;   (printout "Correct")
-; )
-
-
-; (defrule Rule-BLMS-1-correct
-;   ?phase <- (phase BLMS-1-process)
-;   (input-kk ?kk)
-;   (input-nik ?nik)
-;   (blacklist (kk ?kk) (nik ?nik))
-; =>
-;   (printout t "BLMS-1> " ?kk " " ?nik crlf)
-; )
-
-
-
-
-
-
 
 
 
