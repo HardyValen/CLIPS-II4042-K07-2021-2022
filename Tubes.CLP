@@ -1,7 +1,16 @@
-; ====================================
+; =======================================
+; EXPERT SYSTEM
+; SIMULASI KREDIT JUAL-BELI MOBIL BEKAS
+;
+; Kelompok 07
+;   Hardy Valenthio Amansyah  (18218004)
+;   Adi Hendro                (18218009)
+;   Kanisius Sosrodimardito   (18218044)
+;   Iman-Budi Pranakasih      (10118004)
+;
 ; Cara menjalankan command:
-;   clips -f NAMA.CLP
-; ====================================
+;   clips -f Tubes.CLP
+; =======================================
 
 (deftemplate blacklist
   (slot kk)
