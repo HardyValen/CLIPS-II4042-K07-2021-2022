@@ -2,6 +2,8 @@
 
 > EXPERT SYSTEM UNTUK SIMULASI KREDIT JUAL-BELI MOBIL BEKAS
 
+---
+
 ### Kelompok 07
 * Hardy Valenthio Amansyah  (18218004)
 * Adi Hendro                (18218009)
@@ -9,16 +11,29 @@
 * Iman-Budi Pranakasih      (10118004)
 
 ---
+
 ### Requirements
 * [CLIPS Interpreter](http://www.clipsrules.net/)
 
 ### How To Launch
-* Assuming you've added clips to environment $PATH, Open your terminal / CLI
-* Then, clone this repository
-* Change directory to <> folder
-* ```clips -f2 Tubes.CLP```
+Assuming: 
+* You've added clips to environment $PATH,
+* You already have installed git bash (optional; else, download as zip.)
 
-### Reference Works
+You can launch this program by:
+* Open your terminal / CLI; Then, clone this repository
+
+  ```:~$ git clone https://github.com/HardyValen/CLIPS-II4042-K07-2021-2022.git ```
+
+* Change directory to CLIPS-II4042-K07-2021-2022 folder
+
+  ```:~$ cd CLIPS-II4042-K07-2021-2022```
+
+* Change directory to <> folder
+
+  ```:~/CLIPS-II4042-K07-2021-2022$ clips -f2 Tubes.CLP```
+
+### References and Related Works
 * [CLIPSRULES DOCS](http://www.clipsrules.net/Documentation.html)
 * [KCIR](https://kcir.pwr.edu.pl/~witold/ai/CLIPS_tutorial/)
 * [Github Examples by jtonyortiz](https://github.com/jtonyortiz/ExpertSystems)
