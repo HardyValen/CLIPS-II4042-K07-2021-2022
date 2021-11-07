@@ -26,6 +26,23 @@
     (risk low)
     (isLeasing false)
   )
+  (orang
+    (kk 3275065402000002) 
+    (nik 3275065402000002)
+    (umur 21)
+    (salary 20000000)
+    (risk high)
+    (isLeasing true)
+  )
+
+  (orang
+    (kk 3326162103070009) 
+    (nik 3326160101810021)
+    (umur 56)
+    (salary 15000000)
+    (risk medium)
+    (isLeasing false)
+  )
 )
 
 (deffacts BlacklistDB
@@ -124,6 +141,8 @@
   (blacklist (kk 3326160112050067) (nik 3326161808790021))
 )
 
+; (checkBlacklist 3326160112050067 3326161808790021) => TRUE
+
 (deffacts KonfigurasiSimulasi
   (polis 20000)                   ; Polis
   (admin 3000000)                 ; Admin
@@ -148,6 +167,63 @@
 (deffunction round100 (?a)
   (* (round (/ ?a 100)) 100)
 )
+
+(deffunction checkBlacklist (?kk ?nik)
+  (if (and 
+    (any-factp ((?a blacklist)) (= ?a:kk ?kk))
+    (any-factp ((?a blacklist)) (= ?a:nik ?nik))
+  ) then 10 else 0)
+)
+
+(deffunction checkAge (?age)
+  (if (> ?age 50)
+    then 5
+    else (
+      if (and (> ?age 35) (<= ?age 50))
+      then 1
+      else (
+        if (and (>= ?age 21) (<= ?age 35))
+        then 3
+        else 7
+      )
+    )
+  )
+)
+
+(deffunction checkSalarytoCredit (?salary ?angsuran)
+  (bind ?v (/ ?angsuran ?salary))
+  (if (> ?v 0.5)
+    then 7
+    else (
+      if (and (> ?v 0.3) (<= ?v 0.5))
+      then 5
+      else (
+        if (and (> ?v 0.15) (<= ?v 0.3))
+        then 3
+        else 1
+      )
+    )
+  )
+)
+
+(deffunction checkRiskProfile (?risk)
+  (switch ?risk
+    (case low then 1)
+    (case medium then 5)
+    (case high then 7)
+    (default 7)
+  )
+)
+
+(deffunction isLeasing (?truth)
+  (switch ?truth
+    (case true then 5)
+    (case false then 0)
+    (default 7)
+  )
+)
+
+
 
 ; ======================================
 ; defrule start
@@ -554,16 +630,15 @@
   (
     printout t "Survei Kelayakan Pelanggan" crlf
     "1. Tambah Data Pelanggan" crlf
-    "2. Ubah Data Pelanggan" crlf
-    "3. Hapus Data Pelanggan" crlf
-    "4. Cari Pelanggan" crlf
-    "5. Daftar Semua Pelanggan" crlf
-    "6. Survei (Single)" crlf
-    "7. Survei (Batch)" crlf
-    "8. Kembali ke Menu Utama" crlf
-    "9. Keluar dari program" crlf
+    "2. Hapus Data Pelanggan" crlf
+    "3. Cari Pelanggan berdasarkan NIK dan KK" crlf
+    "4. Daftar Semua Pelanggan" crlf
+    "5. Survei (Single)" crlf
+    "6. Survei (Batch)" crlf
+    "7. Kembali ke Menu Utama" crlf
+    "8. Keluar dari program" crlf
 
-    "Apa yang ingin anda lakukan (1 - 9)?" crlf
+    "Apa yang ingin anda lakukan (1 - 8)?" crlf
   )
   (retract ?phase)
   (assert (phase survei-action-process))
@@ -629,7 +704,7 @@
   ?choice <- (user-select ?select&7)
 =>
   (retract ?phase ?choice)
-  (assert (phase survei-7))
+  (assert (phase start))
 )
 
 (defrule survei-action-correct-choice-8
@@ -637,23 +712,15 @@
   ?choice <- (user-select ?select&8)
 =>
   (retract ?phase ?choice)
-  (assert (phase start))
-)
-
-(defrule survei-action-correct-choice-9
-  ?phase <- (phase survei-action-process)
-  ?choice <- (user-select ?select&9)
-=>
-  (retract ?phase ?choice)
   (assert (phase quit))
 )
 
 (defrule survei-action-incorrect-choice
   ?phase <- (phase survei-action-process)
-  ?choice <- (user-select ?select&~1&~2&~3&~4&~5)
+  ?choice <- (user-select ?select&~1&~2&~3&~4&~5&~6&~7&~8)
 =>
   (retract ?phase ?choice)
-  (printout t "Survei> " ?select " tidak ada di pilihan, masukkan nomor 1 - 9." crlf)
+  (printout t "Survei> " ?select " tidak ada di pilihan, masukkan nomor 1 - 8." crlf)
   (assert (phase survei))
 )
 
@@ -683,24 +750,266 @@
 )
 
 ; ============================================
-; survei-2 : Ubah Data Pelanggan
+; survei-x : Survei Verdicts
 ; ============================================
 
-(defrule Rule-survei-2
-  ?phase <- (phase survei-2)
+(defrule Rule-survei-verdict-correct
+  ?phase <- (phase survei-verdict)
+  ?fact_callback <- (survei-callback ?callback)
+  ?fact_kk <- (input-kk ?kk)
+  ?fact_nik <- (input-nik ?nik)
+  ?orang <- (orang (kk ?kk) (nik ?nik))
 =>
-  (retract ?phase)
+  (retract ?phase ?fact_callback ?fact_kk ?fact_nik)
+  (printout t "Survei> FOUND: Orang tersebut ADA di basis data" crlf)
+  (assert (phase ?callback))
+  (assert (orang-selected ?orang))
+)
+
+(defrule Rule-survei-verdict-incorrect
+  ?phase <- (phase survei-verdict)
+  ?fact_callback <- (survei-callback ?callback)
+  ?fact_kk <- (input-kk ?kk)
+  ?fact_nik <- (input-nik ?nik)
+  (not (orang (kk ?kk) (nik ?nik)))
+=>
+  (retract ?phase ?fact_callback ?fact_kk ?fact_nik)
+  (printout t "Survei> NOT FOUND: Orang tersebut TIDAK ADA di basis data" crlf)
   (assert (phase survei))
 )
 
 ; ============================================
-; survei-2 : Ubah Data Pelanggan
+; survei-2 : Hapus Data Pelanggan
 ; ============================================
 
 (defrule Rule-survei-2
   ?phase <- (phase survei-2)
 =>
   (retract ?phase)
+  (printout t "Survei> Masukkan KK: ") (assert (input-kk (read)))
+  (printout t "Survei> Masukkan NIK: ") (assert (input-nik (read)))
+  (assert (survei-callback survei-2-b))
+  (assert (phase survei-verdict))
+)
+
+(defrule Rule-survei-2-b
+  ?phase <- (phase survei-2-b)
+  ?f_select <- (orang-selected ?orang)
+=>
+  (retract ?phase ?orang ?f_select)
+  (printout t "Pelanggan berhasil dihapus dari basis data" crlf)
+  (assert (phase survei))
+)
+
+; ================================================
+; survei-3 : Cari Pelanggan berdasarkan NIK dan KK
+; ================================================
+
+(defrule Rule-survei-3
+  ?phase <- (phase survei-3)
+=>
+  (retract ?phase)
+  (printout t "Survei> Masukkan KK: ") (assert (input-kk (read)))
+  (printout t "Survei> Masukkan NIK: ") (assert (input-nik (read)))
+  (assert (survei-callback survei-3-b))
+  (assert (phase survei-verdict))
+)
+
+(defrule Rule-survei-3-b
+  ?phase <- (phase survei-3-b)
+  ?f_select <- (orang-selected ?orang)
+=>
+  (retract ?phase ?f_select)
+  (printout t "KK: " (fact-slot-value ?orang kk) crlf)
+  (printout t "NIK: " (fact-slot-value ?orang nik) crlf)
+  (printout t "umur: " (fact-slot-value ?orang umur) crlf)
+  (printout t "gaji bulanan: " (fact-slot-value ?orang salary) crlf)
+  (printout t "risk profile: " (fact-slot-value ?orang risk) crlf)
+  (printout t "apakah sedang mengangsur?: " (fact-slot-value ?orang isLeasing) crlf)
+  (assert (phase survei))
+)
+
+; ================================================
+; survei-4 : Daftar Semua Pelanggan
+; ================================================
+
+(defrule Rule-survei-4
+  ?phase <- (phase survei-4)
+=>
+  (retract ?phase)
+  (bind ?count 1)
+  (printout t crlf "================================================" crlf)
+  (do-for-all-facts ((?f orang)) TRUE 
+    (format t "%d. KK: %d; NIK: %d; Umur: %d; Salary: %.2f; Risk: %s; isLeasing: %s %n" ?count ?f:kk ?f:nik ?f:umur ?f:salary ?f:risk ?f:isLeasing)
+    (bind ?count (+ ?count 1))
+  )
+  (printout t crlf "Banyak Orang dalam Database: " (- ?count 1) crlf)
+  (printout t "================================================" crlf crlf)
+  (assert (phase survei))
+)
+
+; ================================================
+; survei-5 : Single Survey
+; ================================================
+
+(defrule Rule-survei-5
+  ?phase <- (phase survei-5)
+=>
+  (retract ?phase)
+  (printout t "Survei> Masukkan KK: ") (assert (input-kk (read)))
+  (printout t "Survei> Masukkan NIK: ") (assert (input-nik (read)))
+  (assert (survei-callback survei-5-b))
+  (assert (phase survei-verdict))
+)
+
+(defrule Rule-survei-5-b
+  ?phase <- (phase survei-5-b)
+  (orang-selected ?orang)
+=>
+  (retract ?phase)
+  (printout t "KK: " (fact-slot-value ?orang kk) crlf)
+  (printout t "NIK: " (fact-slot-value ?orang nik) crlf)
+  (printout t "umur: " (fact-slot-value ?orang umur) crlf)
+  (printout t "gaji bulanan: " (fact-slot-value ?orang salary) crlf)
+  (printout t "risk profile: " (fact-slot-value ?orang risk) crlf)
+  (printout t "apakah sedang mengangsur?: " (fact-slot-value ?orang isLeasing) crlf)
+
+  ; Proses Blacklist
+  
+  (assert (survei-5-score (checkBlacklist (fact-slot-value ?orang kk) (fact-slot-value ?orang nik))))
+  (assert (phase survei-5-verdict))
+  (assert (survei-callback survei-5-c))
+)
+
+(defrule Rule-survei-5-c
+  ?phase <- (phase survei-5-c)
+  ?f_score <- (survei-5-score ?score)
+  (orang-selected ?orang)
+=>
+  (retract ?f_score ?phase)
+  ; Proses Cek Umur
+  (printout t "Score temp: " ?score crlf)
+  (printout t "Mengecek umur..." crlf)
+
+  (assert (survei-5-score (+ ?score (checkAge(fact-slot-value ?orang umur)))))
+  (assert (phase survei-5-verdict))
+  (assert (survei-callback survei-5-d))
+)
+
+(defrule Rule-survei-5-d
+  ?phase <- (phase survei-5-d)
+  ?f_score <- (survei-5-score ?score)
+  (orang-selected ?orang)
+=>
+  (retract ?f_score ?phase)
+  ; Proses Cek Salary to Credit
+  (printout t "Score temp: " ?score crlf crlf)
+  (printout t "Survei> Masukkan target angsuran: ") (bind ?angsuran (read))
+  (printout t "Mengecek persentase kredit dan gaji..." crlf)
+
+  (assert (survei-5-score (+ ?score (checkSalarytoCredit (fact-slot-value ?orang salary) ?angsuran))))
+  (assert (phase survei-5-verdict))
+  (assert (survei-callback survei-5-e))
+)
+
+(defrule Rule-survei-5-e
+  ?phase <- (phase survei-5-e)
+  ?f_score <- (survei-5-score ?score)
+  (orang-selected ?orang)
+=>
+  (retract ?f_score ?phase)
+  ; Proses Cek Risk Profile
+  (printout t "Score temp: " ?score crlf crlf)
+  (printout t "Mengecek risk profile..." crlf)
+
+  (assert (survei-5-score (+ ?score (checkRiskProfile(fact-slot-value ?orang risk)))))
+  (assert (phase survei-5-verdict))
+  (assert (survei-callback survei-5-f))
+)
+
+(defrule Rule-survei-5-f
+  ?phase <- (phase survei-5-f)
+  ?f_score <- (survei-5-score ?score)
+  (orang-selected ?orang)
+=>
+  (retract ?f_score ?phase)
+  ; Proses Cek Leasing
+  (printout t "Score temp: " ?score crlf crlf)
+  (printout t "Mengecek apakah orang ini sedang mengangsur di leasing lain..." crlf)
+
+  (assert (survei-5-score (+ ?score (isLeasing(fact-slot-value ?orang isLeasing)))))
+  (assert (phase survei-5-verdict))
+  (assert (survei-callback survei-5-success))
+)
+
+; Verdicts
+
+(defrule Rule-survei-5-verdict
+  ?phase <- (phase survei-5-verdict)
+  ?f_score <- (survei-5-score ?score)
+  ?f_callback <- (survei-callback ?callback)
+=> 
+  (retract ?phase ?f_callback)
+  (if (>= ?score 10)
+    then (assert (phase survei-5-failure))
+    else (assert (phase ?callback))
+  )
+)
+
+(defrule Rule-survei-5-failure
+  ?phase <- (phase survei-5-failure)
+  ?f_score <- (survei-5-score ?score)
+  ?f_orang <- (orang-selected ?orang)
+=>
+  (printout t crlf "=================================" crlf)
+  (printout t "Hasil Survei> Skor: " ?score crlf)
+  (printout t "Hasil Survei> Tidak Lolos Survei!" crlf)
+  (printout t "=================================" crlf crlf)
+  (retract ?phase ?f_score ?f_orang)
+  (assert (phase survei))
+)
+
+(defrule Rule-survei-5-success
+  ?phase <- (phase survei-5-success)
+  ?f_score <- (survei-5-score ?score)
+  ?f_orang <- (orang-selected ?orang)
+=>
+  (printout t crlf "=================================" crlf)
+  (printout t "Hasil Survei> Skor Akhir: " ?score crlf)
+  (printout t "Hasil Survei> Lolos Survei!" crlf)
+  (printout t "=================================" crlf crlf)
+  (retract ?phase ?f_score ?f_orang)
+  (assert (phase survei))
+  
+)
+
+; ================================================
+; survei-6 : Batch Survey
+; ================================================
+
+(defrule Rule-survei-6
+  ?phase <- (phase survei-6)
+=> 
+  (retract ?phase)
+  (printout t "Survei> Masukkan besar target angsuran: ") (bind ?angsuran (read))
+  (bind ?count 1)
+
+  (printout t crlf "================================================" crlf)
+  (printout t crlf "SKOR TIDAK LOLOS > 10" crlf)
+  (printout t crlf "================================================" crlf)
+  (do-for-all-facts ((?f orang)) TRUE 
+    (bind ?skor (checkBlacklist ?f:kk ?f:nik))
+    (bind ?skor (+ ?skor (checkAge ?f:umur)))
+    (bind ?skor (+ ?skor (checkSalarytoCredit ?f:salary ?angsuran)))
+    (bind ?skor (+ ?skor (checkRiskProfile ?f:risk)))
+    (bind ?skor (+ ?skor (isLeasing ?f:isLeasing)))
+
+    (bind ?verdict (if (>= ?skor 10) then "Tidak Lolos" else "Lolos"))
+    (format t "%d. KK: %d; NIK: %d; Skor: %d; Verdict: %s%n" ?count ?f:kk ?f:nik ?skor ?verdict)
+    (bind ?count (+ ?count 1))
+  )
+  (printout t "================================================" crlf crlf)
+
   (assert (phase survei))
 )
 
