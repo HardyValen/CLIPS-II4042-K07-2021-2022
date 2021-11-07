@@ -150,8 +150,6 @@
   (blacklist (kk 3326160112050067) (nik 3326161808790021))
 )
 
-; (checkBlacklist 3326160112050067 3326161808790021) => TRUE
-
 (deffacts KonfigurasiSimulasi
   (polis 20000)                   ; Polis
   (admin 3000000)                 ; Admin
@@ -315,8 +313,10 @@
 (defrule quit
   ?phase <- (phase quit)
 =>
+  (retract ?phase)
   (printout t "Bye" crlf)
-  (exit)
+  (printout t "Re-run the script by (reset) (run)" crlf)
+;  (exit)
 )
 
 ; ======================================
