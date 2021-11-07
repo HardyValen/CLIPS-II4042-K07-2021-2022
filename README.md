@@ -26,12 +26,12 @@ You can launch this program by
 ![image](https://user-images.githubusercontent.com/34004631/140648255-2e132a2c-10f7-4df6-a24c-36c77f4b2756.png)
 * Navigate to CLIPS-II4042-K07-2021-2022-master directory containing Tubes.CLP
 ![image](https://user-images.githubusercontent.com/34004631/140648325-aa82923c-bbf4-4a41-a8ab-c3b9d32b0a9c.png)
-* Do following:
+* Execute following commands inside CLIPS>:
 ```
-  CLIPS> (reset)
-  CLIPS> (run)
+  (reset)
+  (run)
 ```
-![image](https://user-images.githubusercontent.com/34004631/140648408-915256aa-05d3-4af3-b721-8e7ffbfd4f02.png)
+![image](https://user-images.githubusercontent.com/34004631/140648520-236e2ebc-713e-4bff-adf4-6c0ddf7809b8.png)
 
 NOTE: For CLIPS IDE users, i recommend you to change the source code by removing the (exit) line to prevent the CLIPS IDE windows to close.
 
@@ -44,15 +44,21 @@ Assuming:
 You can launch this program by:
 * Open your terminal / CLI; Then, clone this repository
 
-  ```:~$ git clone https://github.com/HardyValen/CLIPS-II4042-K07-2021-2022.git ```
+  ```
+    git clone https://github.com/HardyValen/CLIPS-II4042-K07-2021-2022.git 
+  ```
 
 * Change directory to CLIPS-II4042-K07-2021-2022 folder
 
-  ```:~$ cd CLIPS-II4042-K07-2021-2022```
+  ```
+    cd CLIPS-II4042-K07-2021-2022
+  ```
 
-* Change directory to <> folder
+* Run the following command inside the folder.
 
-  ```:~/CLIPS-II4042-K07-2021-2022$ clips -f2 Tubes.CLP```
+  ```
+    clips -f2 Tubes.CLP
+  ```
 
 ### References and Related Works
 * [CLIPSRULES DOCS](http://www.clipsrules.net/Documentation.html)
