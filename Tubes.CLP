@@ -232,8 +232,6 @@
   )
 )
 
-
-
 ; ======================================
 ; defrule start
 ; initializes the program
@@ -332,9 +330,11 @@
     printout t "Blacklist Inspector" crlf
     "1. Cek Blacklist (KK dan NIK)" crlf
     "2. Daftar Orang Blacklist" crlf
-    "3. Kembali ke Menu Utama" crlf
-    "4. Keluar dari program" crlf
-    "Apa yang ingin anda lakukan (1 - 4)?" crlf
+    "3. Tambah Entri Blacklist" crlf
+    "4. Hapus Entri Blacklist" crlf
+    "5. Kembali ke Menu Utama" crlf
+    "6. Keluar dari program" crlf
+    "Apa yang ingin anda lakukan (1 - 6)?" crlf
   )
   (retract ?phase)
   (assert (phase BLMS-action-process))
@@ -368,7 +368,7 @@
   ?choice <- (user-select ?select&3)
 =>
   (retract ?phase ?choice)
-  (assert (phase start))
+  (assert (phase BLMS-3))
 )
 
 (defrule BLMS-action-correct-choice-4
@@ -376,15 +376,31 @@
   ?choice <- (user-select ?select&4)
 =>
   (retract ?phase ?choice)
+  (assert (phase BLMS-4))
+)
+
+(defrule BLMS-action-correct-choice-5
+  ?phase <- (phase BLMS-action-process)
+  ?choice <- (user-select ?select&5)
+=>
+  (retract ?phase ?choice)
+  (assert (phase start))
+)
+
+(defrule BLMS-action-correct-choice-6
+  ?phase <- (phase BLMS-action-process)
+  ?choice <- (user-select ?select&6)
+=>
+  (retract ?phase ?choice)
   (assert (phase quit))
 )
 
 (defrule BLMS-action-incorrect-choice
   ?phase <- (phase BLMS-action-process)
-  ?choice <- (user-select ?select&~1&~2&~3&~4)
+  ?choice <- (user-select ?select&~1&~2&~3&~4&~5&~6)
 =>
   (retract ?phase ?choice)
-  (printout t "BLMS> " ?select " tidak ada di pilihan, masukkan nomor 1 - 4." crlf)
+  (printout t "BLMS:: " ?select " tidak ada di pilihan, masukkan nomor 1 - 6." crlf)
   (assert (phase BLMS))
 )
 
@@ -395,30 +411,42 @@
   ?phase <- (phase BLMS-1)
 =>
   (retract ?phase)
-  (printout t "BLMS-1> Masukkan KK: ") (assert (input-kk (read)))
-  (printout t "BLMS-1> Masukkan NIK: ") (assert (input-nik (read)))
-  (assert (phase BLMS-1-process))
+  (printout t "Masukkan KK> ") (assert (input-kk (read)))
+  (printout t "Masukkan NIK> ") (assert (input-nik (read)))
+  (assert (phase BLMS-verdict))
+  (assert (BLMS-callback BLMS-1-b))
 )
 
-(defrule Rule-BLMS-1-correct
-  ?phase <- (phase BLMS-1-process)
-  ?fact_kk <- (input-kk ?kk)
-  ?fact_nik <- (input-nik ?nik)
-  (blacklist (kk ?kk) (nik ?nik))
+(defrule Rule-BLMS-1-b
+  ?phase <- (phase BLMS-1-b)
+  ?f_select <- (BL-selected ?orang)
 =>
-  (retract ?phase ?fact_kk ?fact_nik)
-  (printout t "BLMS-1> FOUND: Orang tersebut ADA di blacklist" crlf)
+  (retract ?f_select ?phase)
   (assert (phase BLMS))
 )
 
+(defrule Rule-BLMS-1-correct
+  ?phase <- (phase BLMS-verdict)
+  ?fact_callback <- (BLMS-callback ?callback)
+  ?fact_kk <- (input-kk ?kk)
+  ?fact_nik <- (input-nik ?nik)
+  ?orang <- (blacklist (kk ?kk) (nik ?nik))
+=>
+  (retract ?phase ?fact_callback ?fact_kk ?fact_nik)
+  (printout t "BLMS:: FOUND: Orang tersebut ADA di blacklist" crlf)
+  (assert (phase ?callback))
+  (assert (BL-selected ?orang))
+)
+
 (defrule Rule-BLMS-1-incorrect
-  ?phase <- (phase BLMS-1-process)
+  ?phase <- (phase BLMS-verdict)
+  ?fact_callback <- (BLMS-callback ?callback)
   ?fact_kk <- (input-kk ?kk)
   ?fact_nik <- (input-nik ?nik)
   (not (blacklist (kk ?kk) (nik ?nik)))
 =>
-  (retract ?phase ?fact_kk ?fact_nik)
-  (printout t "BLMS-1> NOT FOUND: Orang tersebut TIDAK ADA di blacklist" crlf)
+  (retract ?phase ?fact_callback ?fact_kk ?fact_nik)
+  (printout t "BLMS:: NOT FOUND: Orang tersebut TIDAK ADA di blacklist" crlf)
   (assert (phase BLMS))
 )
 
@@ -435,7 +463,46 @@
     (format t "%d. KK: %d; NIK: %d;%n" ?count ?f:kk ?f:nik)
     (bind ?count (+ ?count 1))
   )
-  (printout t "Banyak Orang dalam Blacklist: " (- ?count 1) crlf)
+  (printout t "BLMS:: Banyak Orang dalam Blacklist: " (- ?count 1) crlf)
+  (assert (phase BLMS))
+)
+
+; ======================================
+; BLMS-3 - Tambah orang pada Blacklist
+; ======================================
+(defrule Rule-BLMS-3
+  ?phase <- (phase BLMS-3)
+=>
+  (retract ?phase)
+  (printout t "Masukkan Nomor KK> ") (bind ?kk (read))
+  (printout t "Masukkan Nomor NIK> ") (bind ?nik (read))
+  (assert (blacklist
+    (kk ?kk)
+    (nik ?nik)
+  ))
+  (printout t "BLMS:: Data sudah ditambahkan!" crlf)
+  (assert (phase BLMS))
+)
+
+; ======================================
+; BLMS-4 - Hapus orang pada Blacklist
+; ======================================
+(defrule Rule-BLMS-4
+  ?phase <- (phase BLMS-4)
+=>
+  (retract ?phase)
+  (printout t "Masukkan Nomor KK> ") (assert (input-kk (read)))
+  (printout t "Masukkan Nomor NIK> ") (assert (input-nik (read)))
+  (assert (BLMS-callback BLMS-4-b))
+  (assert (phase BLMS-verdict))
+)
+
+(defrule Rule-BLMS-4-b
+  ?phase <- (phase BLMS-4-b)
+  ?f_select <- (BL-selected ?orang)
+=>
+  (retract ?phase ?f_select ?orang)
+  (printout t "BLMS:: Pelanggan berhasil dihapus dari Blacklist" crlf)
   (assert (phase BLMS))
 )
 
@@ -513,7 +580,7 @@
   ?choice <- (user-select ?select&~1&~2&~3&~4&~5)
 =>
   (retract ?phase ?choice)
-  (printout t "Simulasi> " ?select " tidak ada di pilihan, masukkan nomor 1 - 5." crlf)
+  (printout t " " ?select " tidak ada di pilihan, masukkan nomor 1 - 5." crlf)
   (assert (phase simulasi))
 )
 
@@ -602,10 +669,11 @@
   (acp ?s_acp)
 =>
   (retract ?phase)
-  (printout t "Biaya Polis: " ?v_polis crlf)
-  (printout t "Biaya Admin: " ?v_admin crlf)
-  (printout t "Persentase Provisi: " ?v_provisi "%" crlf)
-  (printout t "Pakai ACP? (1 = YA, lainnya = TIDAK): " ?s_acp crlf)
+  (printout t "Simulasi:: Berikut data konfigurasi sistem saat ini" crlf)
+  (printout t "1. Biaya Polis: " ?v_polis crlf)
+  (printout t "2. Biaya Admin: " ?v_admin crlf)
+  (printout t "3. Persentase Provisi: " ?v_provisi "%" crlf)
+  (printout t "4. Pakai ACP? (1 = YA, lainnya = TIDAK): " ?s_acp crlf)
   (assert (phase simulasi))
 )
 
@@ -621,11 +689,11 @@
   ?f_acp <- (acp ?s_acp)
 =>
   (retract ?phase ?f_polis ?f_admin ?f_provisi ?f_acp)
-  (printout t "Mengubah konfigurasi.. (masukkan data yang sesuai)" crlf)
-  (printout t "Masukkan biaya polis (OTR) | Before: " ?v_polis " | integer> ") (assert (polis (read)))
-  (printout t "Masukkan biaya admin | Before: " ?v_admin " | integer> ") (assert (admin (read)))
-  (printout t "Masukkan rate provisi (rate) | Before: " ?v_provisi " | float> ") (assert (v_provisi (read)))
-  (printout t "Aktifkan ACP? | Before: " ?s_acp " | [1 = YA, lainnya = TIDAK]> ") (assert (acp (read)))
+  (printout t "Simulasi:: Mengubah konfigurasi.. (masukkan data yang sesuai)" crlf)
+  (printout t "1. Masukkan biaya polis (OTR) | Before: " ?v_polis " | integer> ") (assert (polis (read)))
+  (printout t "2. Masukkan biaya admin | Before: " ?v_admin " | integer> ") (assert (admin (read)))
+  (printout t "3. Masukkan rate provisi (rate) | Before: " ?v_provisi " | float> ") (assert (v_provisi (read)))
+  (printout t "4. Aktifkan ACP? | Before: " ?s_acp " | [1 = YA, lainnya = TIDAK]> ") (assert (acp (read)))
   (assert (phase simulasi-2))
 )
 
@@ -657,7 +725,7 @@
 
 ; ======================================
 ; defrule survei-action-correct-choice-n
-; correct value = [1-9] 
+; correct value = [1-8] 
 ; ======================================
 
 (defrule survei-action-correct-choice-1
@@ -729,7 +797,7 @@
   ?choice <- (user-select ?select&~1&~2&~3&~4&~5&~6&~7&~8)
 =>
   (retract ?phase ?choice)
-  (printout t "Survei> " ?select " tidak ada di pilihan, masukkan nomor 1 - 8." crlf)
+  (printout t "Survei:: " ?select " tidak ada di pilihan, masukkan nomor 1 - 8." crlf)
   (assert (phase survei))
 )
 
@@ -741,12 +809,12 @@
   ?phase <- (phase survei-1)
 =>
   (retract ?phase)
-  (printout t "Masukkan Nomor KK: ") (bind ?kk (read))
-  (printout t "Masukkan Nomor NIK: ") (bind ?nik (read))
-  (printout t "Masukkan umur: ") (bind ?umur (read))
-  (printout t "Masukkan gaji bulanan: ") (bind ?salary (read))
-  (printout t "Tentukan risk profile (low | medium | high): ") (bind ?risk (read))
-  (printout t "Apakah sedang mengangsur? (true | false): ") (bind ?isLeasing (read))
+  (printout t "Masukkan Nomor KK> ") (bind ?kk (read))
+  (printout t "Masukkan Nomor NIK> ") (bind ?nik (read))
+  (printout t "Masukkan umur> ") (bind ?umur (read))
+  (printout t "Masukkan gaji bulanan> ") (bind ?salary (read))
+  (printout t "Tentukan risk profile (low | medium | high)> ") (bind ?risk (read))
+  (printout t "Apakah sedang mengangsur? (true | false)> ") (bind ?isLeasing (read))
   (assert (orang
     (kk ?kk)
     (nik ?nik)
@@ -755,6 +823,7 @@
     (risk ?risk)
     (isLeasing ?isLeasing)
   ))
+  (printout t "Survei:: Data sudah ditambahkan!" crlf)
   (assert (phase survei))
 )
 
@@ -770,7 +839,7 @@
   ?orang <- (orang (kk ?kk) (nik ?nik))
 =>
   (retract ?phase ?fact_callback ?fact_kk ?fact_nik)
-  (printout t "Survei> FOUND: Orang tersebut ADA di basis data" crlf)
+  (printout t "Survei:: FOUND: Orang tersebut ADA di basis data" crlf)
   (assert (phase ?callback))
   (assert (orang-selected ?orang))
 )
@@ -783,7 +852,7 @@
   (not (orang (kk ?kk) (nik ?nik)))
 =>
   (retract ?phase ?fact_callback ?fact_kk ?fact_nik)
-  (printout t "Survei> NOT FOUND: Orang tersebut TIDAK ADA di basis data" crlf)
+  (printout t "Survei:: NOT FOUND: Orang tersebut TIDAK ADA di basis data" crlf)
   (assert (phase survei))
 )
 
@@ -795,8 +864,8 @@
   ?phase <- (phase survei-2)
 =>
   (retract ?phase)
-  (printout t "Survei> Masukkan KK: ") (assert (input-kk (read)))
-  (printout t "Survei> Masukkan NIK: ") (assert (input-nik (read)))
+  (printout t "Masukkan KK> ") (assert (input-kk (read)))
+  (printout t "Masukkan NIK> ") (assert (input-nik (read)))
   (assert (survei-callback survei-2-b))
   (assert (phase survei-verdict))
 )
@@ -818,8 +887,8 @@
   ?phase <- (phase survei-3)
 =>
   (retract ?phase)
-  (printout t "Survei> Masukkan KK: ") (assert (input-kk (read)))
-  (printout t "Survei> Masukkan NIK: ") (assert (input-nik (read)))
+  (printout t "Masukkan KK> ") (assert (input-kk (read)))
+  (printout t "Masukkan NIK> ") (assert (input-nik (read)))
   (assert (survei-callback survei-3-b))
   (assert (phase survei-verdict))
 )
@@ -865,8 +934,8 @@
   ?phase <- (phase survei-5)
 =>
   (retract ?phase)
-  (printout t "Survei> Masukkan KK: ") (assert (input-kk (read)))
-  (printout t "Survei> Masukkan NIK: ") (assert (input-nik (read)))
+  (printout t "Masukkan KK> ") (assert (input-kk (read)))
+  (printout t "Masukkan NIK> ") (assert (input-nik (read)))
   (assert (survei-callback survei-5-b))
   (assert (phase survei-verdict))
 )
@@ -913,7 +982,7 @@
   (retract ?f_score ?phase)
   ; Proses Cek Salary to Credit
   (printout t "Score temp: " ?score crlf crlf)
-  (printout t "Survei> Masukkan target angsuran: ") (bind ?angsuran (read))
+  (printout t "Masukkan target angsuran> ") (bind ?angsuran (read))
   (printout t "Mengecek persentase kredit dan gaji..." crlf)
 
   (assert (survei-5-score (+ ?score (checkSalarytoCredit (fact-slot-value ?orang salary) ?angsuran))))
@@ -971,8 +1040,8 @@
   ?f_orang <- (orang-selected ?orang)
 =>
   (printout t crlf "=================================" crlf)
-  (printout t "Hasil Survei> Skor: " ?score crlf)
-  (printout t "Hasil Survei> Tidak Lolos Survei!" crlf)
+  (printout t "Survei:: Skor: " ?score crlf)
+  (printout t "Survei:: Tidak Lolos Survei!" crlf)
   (printout t "=================================" crlf crlf)
   (retract ?phase ?f_score ?f_orang)
   (assert (phase survei))
@@ -984,8 +1053,8 @@
   ?f_orang <- (orang-selected ?orang)
 =>
   (printout t crlf "=================================" crlf)
-  (printout t "Hasil Survei> Skor Akhir: " ?score crlf)
-  (printout t "Hasil Survei> Lolos Survei!" crlf)
+  (printout t "Survei:: Skor Akhir: " ?score crlf)
+  (printout t "Survei:: Lolos Survei!" crlf)
   (printout t "=================================" crlf crlf)
   (retract ?phase ?f_score ?f_orang)
   (assert (phase survei))
@@ -1000,7 +1069,7 @@
   ?phase <- (phase survei-6)
 => 
   (retract ?phase)
-  (printout t "Survei> Masukkan besar target angsuran: ") (bind ?angsuran (read))
+  (printout t "Masukkan besar target angsuran> ") (bind ?angsuran (read))
   (bind ?count 1)
 
   (printout t crlf "================================================" crlf)
